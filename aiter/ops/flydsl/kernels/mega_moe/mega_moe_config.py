@@ -944,6 +944,19 @@ def _tune_v41_flash_ep8(config: MegaMoEConfig, ctx: _TuningContext) -> MegaMoECo
                         "spatial_partition": 201,
                     },
                 )
+        # Conc-64 decode, 48-64 rows per rank. tile_n 256 matches the base
+        # t32x128 output bitwise and is about 2.4% faster on the whole call
+        # with the fixed-slot overlap flags on.
+        if (
+            ctx.fixed_slot
+            and ctx.mtpr == 512
+            and ctx.bucket == 64
+            and (
+                envs.AITER_MEGA_S1_FIXED_FUSED_STAGE2
+                or envs.AITER_MEGA_S1_FIXED_TUNED_GEMM1
+            )
+        ):
+            return _replace_config(config, stage1={"tile_n": 256})
         return config
     if ctx.fixed_slot:
         if ctx.bucket in (16, 32):
